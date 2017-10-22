@@ -7,9 +7,23 @@ import {TabBarIcon} from '../components/tabbar-icon'
 
 import {newsImages} from '../../../images/news-images'
 import NewsContainer from './news-container'
+import {NoonNewsView} from './noon-news-bulletin'
 
 export default TabNavigator(
   {
+    NoonNews: {
+      screen: ({navigation}) =>
+        <NoonNewsView
+          navigation={navigation}
+          url="https://apps.carleton.edu/campact/nnb/show.php3"
+          name="Noon News Bulletin"
+        />,
+      navigationOptions: {
+        tabBarLabel: 'NNB',
+        tabBarIcon: TabBarIcon('paper'),
+      },
+    },
+
     CarletonNewsView: {
       screen: ({navigation}) => (
         <NewsContainer

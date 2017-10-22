@@ -13,6 +13,7 @@ import {MenusView} from './views/menus'
 import {FilterView} from './views/components/filter'
 import NewsView from './views/news'
 import NewsItemView from './views/news/news-item'
+import {NoonNewsView} from './views/news/noon-news-bulletin'
 import SISView from './views/sis'
 import {StudentWorkDetailView} from './views/sis/student-work-carls'
 import {
@@ -52,6 +53,7 @@ const styles = StyleSheet.create({
 
 export const AppNavigator = StackNavigator(
   {
+    NewsView: {screen: NewsView},
     HomeView: {screen: HomeView},
     BuildingHoursDetailView: {screen: BuildingHoursDetailView},
     BuildingHoursView: {screen: BuildingHoursView},
@@ -71,7 +73,7 @@ export const AppNavigator = StackNavigator(
     LegalView: {screen: LegalView},
     MenusView: {screen: MenusView},
     NewsItemView: {screen: NewsItemView},
-    NewsView: {screen: NewsView},
+    NoonNewsView: {screen: NoonNewsView},
     PrivacyView: {screen: PrivacyView},
     SettingsView: {screen: SettingsView},
     SISView: {screen: SISView},
