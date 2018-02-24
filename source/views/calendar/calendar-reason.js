@@ -9,6 +9,7 @@ import type {EventType, ReasonEventType} from './types'
 import moment from 'moment-timezone'
 import delay from 'delay'
 import LoadingView from '../components/loading'
+import {fetchReasonCalendar} from './reason-calendar'
 import qs from 'querystring'
 const TIMEZONE = 'America/Winnipeg'
 
@@ -23,6 +24,7 @@ type State = {
 type Props = TopLevelViewPropsType & {
 	calendarUrl: string,
 	calendarProps?: any,
+	googleCalendarId: string,
 	poweredBy: {title: string, href: string},
 	eventMapper?: EventType => EventType,
 }
@@ -40,36 +42,18 @@ export class ReasonCalendarView extends React.Component<Props, State> {
 		this.refresh()
 	}
 
-	buildCalendarUrl(calendarUrl: string, calendarProps: any, now: moment) {
-		let params = {
-			// eslint-disable-next-line camelcase
-			start_date: now.clone().format('YYYY-MM-DD'),
-			// eslint-disable-next-line camelcase
-			end_date: now
-				.clone()
-				.add(1, 'month')
-				.format('YYYY-MM-DD'),
-			...(calendarProps || {}),
-			format: 'json',
-		}
-		return `${calendarUrl}?${qs.stringify(params)}`
-	}
-
-	convertEvents(data: ReasonEventType[], now: moment): EventType[] {
+	convertEvents(data: ReasonEventType[]): EventType[] {
 		let events = data.map(event => {
-			const startTime = moment(event.datetime)
-			const endTime = startTime
-				.clone()
-				.add(event.hours, 'hours')
-				.add(event.minutes, 'minutes')
-
 			return {
-				startTime,
-				endTime,
-				title: event.name || '',
-				description: event.description || '',
+				id: event.id,
+				startTime: moment(event.start),
+				endTime: moment(event.end),
+				title: event.title || '',
+				description: '',
 				location: event.location || '',
-				isOngoing: startTime.isBefore(now, 'day') && endTime.isSameOrAfter(now),
+				date: event.date,
+				isOngoing: event.ongoing,
+				allDay: event.allDay,
 				config: {
 					startTime: true,
 					endTime: true,
@@ -86,15 +70,18 @@ export class ReasonCalendarView extends React.Component<Props, State> {
 	}
 
 	getEvents = async (now: moment = moment.tz(TIMEZONE)) => {
-		let url = this.buildCalendarUrl(
-			this.props.calendarUrl,
-			this.props.calendarProps,
-			now,
-		)
+		let start = now.clone()
+		let end = now.clone().add(1, 'month')
 
 		let data: Array<ReasonEventType> = []
 		try {
-			data = await fetchJson(url)
+			let {events, missing} = await fetchReasonCalendar(
+				this.props.calendarUrl,
+				this.props.googleCalendarId,
+				start,
+				end,
+			)
+			data = events
 		} catch (err) {
 			tracker.trackException(err.message)
 			bugsnag.notify(err)
@@ -105,7 +92,7 @@ export class ReasonCalendarView extends React.Component<Props, State> {
 		this.setState(() => ({
 			now,
 			loaded: true,
-			events: this.convertEvents(data, now),
+			events: this.convertEvents(data),
 		}))
 	}
 

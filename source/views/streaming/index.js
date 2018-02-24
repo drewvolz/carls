@@ -24,6 +24,7 @@ export default TabNavigator(
 							endTime: false,
 						},
 					})}
+					googleCalendarId="2tj2qun1f92tejr7ml1d2e4kg0j7dn0u@import.calendar.google.com"
 					navigation={navigation}
 					poweredBy={{
 						title: 'Powered by SUMO',

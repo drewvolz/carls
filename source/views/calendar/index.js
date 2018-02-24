@@ -15,6 +15,7 @@ export default TabNavigator(
 			screen: ({navigation}) => (
 				<ReasonCalendarView
 					calendarUrl="https://apps.carleton.edu/calendar/"
+					googleCalendarId="c7lu6q4995afqqv43de8okj416pajcf8@import.calendar.google.com"
 					navigation={navigation}
 					poweredBy={{
 						title: 'Powered by the Carleton Calendar',
@@ -32,6 +33,7 @@ export default TabNavigator(
 			screen: ({navigation}) => (
 				<ReasonCalendarView
 					calendarUrl="https://apps.carleton.edu/student/orgs/cave/calendar/"
+					googleCalendarId="a092i8637g4avehe5p42587l9933v2ei@import.calendar.google.com"
 					navigation={navigation}
 					poweredBy={{
 						title: 'Powered by the Carleton Calendar',

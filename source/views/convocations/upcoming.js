@@ -17,6 +17,7 @@ export class UpcomingConvocationsView extends React.PureComponent<Props> {
 		return (
 			<ReasonCalendarView
 				calendarUrl="https://apps.carleton.edu/events/convocations/"
+				googleCalendarId="n6bc0o0hgm9gu3npdpks17ukir3tbadf@import.calendar.google.com"
 				navigation={this.props.navigation}
 				poweredBy={{
 					title: 'Powered by the Carleton Calendar',
