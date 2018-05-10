@@ -1,41 +1,36 @@
 // @flow
 
 import * as React from 'react'
-import {View, FlatList} from 'react-native'
-import * as c from '../components/colors'
+import {FlatList} from 'react-native'
+import glamorous from 'glamorous-native'
 import {ListSeparator, Title, Detail, ListRow} from '../components/list'
-import {Row, Column} from '../components/layout'
-import type {Building} from './types'
+import * as c from '../components/colors'
+import type {Building, Feature} from './types'
 
 type Props = {
-	buildings: Array<Building>,
+	buildings: Array<Feature<Building>>,
 	onSelect: string => any,
 	scrollEnabled: boolean,
 }
 
 export class BuildingList extends React.Component<Props> {
-	keyExtractor = (item: Building) => item.id
+	keyExtractor = (item: Feature<Building>) => item.id
 
 	onPress = (id: string) => this.props.onSelect(id)
 
-	renderItem = ({item}: {item: Building}) => {
-		const detail = item.address || (item.center || []).join(',') || ''
+	renderItem = ({item}: {item: Feature<Building>}) => {
+		let point = item.geometry.geometries.find(geo => geo.type === 'Point') || {}
+		let detail =
+			item.properties.address || (point.coordinates || []).join(',') || ''
 		return (
 			<ListRow onPress={() => this.onPress(item.id)} spacing={{left: 12}}>
-				<Row>
-					<View
-						alignSelf="center"
-						backgroundColor={c.success}
-						borderRadius={24}
-						height={24}
-						marginRight={8}
-						width={24}
-					/>
-					<Column>
-						<Title>{item.name}</Title>
-						<Detail>{detail}</Detail>
-					</Column>
-				</Row>
+				<Title>
+					{item.properties.name}
+					{item.properties.nickname ? (
+						<Nickname> ({item.properties.nickname})</Nickname>
+					) : null}
+				</Title>
+				<Detail>{detail}</Detail>
 			</ListRow>
 		)
 	}
@@ -56,3 +51,7 @@ export class BuildingList extends React.Component<Props> {
 		)
 	}
 }
+
+const Nickname = glamorous.text({
+	color: c.iosDisabledText,
+})

@@ -1,20 +1,23 @@
 // @flow
 
 import React from 'react'
-import {StyleSheet, Text, FlatList} from 'react-native'
+import {StyleSheet, Text, SectionList} from 'react-native'
 import {TabBarIcon} from '../../components/tabbar-icon'
 import type {TopLevelViewPropsType} from '../../types'
 import * as c from '../../components/colors'
-import {ListSeparator} from '../../components/list'
+import {ListSeparator, ListSectionHeader} from '../../components/list'
 import {tracker} from '../../../analytics'
 import bugsnag from '../../../bugsnag'
 import {NoticeView} from '../../components/notice'
 import LoadingView from '../../components/loading'
+import groupBy from 'lodash/groupBy'
+import sortBy from 'lodash/sortBy'
+import toPairs from 'lodash/toPairs'
 import delay from 'delay'
 import {JobRow} from './job-row'
-import type {ThinJobType} from './types'
+import type {FullJobType} from './types'
 
-const jobsUrl = 'https://apps.carleton.edu/campus/sfs/employment/feeds/jobs'
+const jobsUrl = 'https://carleton.api.frogpond.tech/v1/jobs'
 
 const styles = StyleSheet.create({
 	listContainer: {
@@ -22,11 +25,8 @@ const styles = StyleSheet.create({
 	},
 })
 
-const fetchJobs = (): Array<ThinJobType> =>
-	fetchXml(jobsUrl).then(resp => resp.rss.channel.item)
-
 type State = {
-	jobs: Array<ThinJobType>,
+	jobs: Array<{title: string, data: Array<FullJobType>}>,
 	loaded: boolean,
 	refreshing: boolean,
 	error: boolean,
@@ -34,7 +34,7 @@ type State = {
 
 type Props = TopLevelViewPropsType & {}
 
-export class StudentWorkView extends React.PureComponent<Props, State> {
+export class StudentWorkView extends React.Component<Props, State> {
 	static navigationOptions = {
 		headerBackTitle: 'Job Postings',
 		tabBarLabel: 'Job Postings',
@@ -48,14 +48,25 @@ export class StudentWorkView extends React.PureComponent<Props, State> {
 		error: false,
 	}
 
-	componentWillMount() {
+	componentDidMount() {
 		this.refresh()
 	}
 
 	fetchData = async () => {
 		try {
-			const jobs = await fetchJobs()
-			this.setState(() => ({jobs}))
+			const jobs = await fetchJson(jobsUrl)
+			// ensure that During Term comes first
+			let sortedJobs = sortBy(
+				jobs,
+				job => `${job.duringTerm ? 0 : 1}-${job.name}`,
+			)
+			// now group them
+			let grouped = groupBy(
+				sortedJobs,
+				job => (job.duringTerm ? 'During Term' : 'During Break'),
+			)
+			grouped = toPairs(grouped).map(([title, data]) => ({title, data}))
+			this.setState(() => ({jobs: grouped}))
 		} catch (err) {
 			tracker.trackException(err.message)
 			bugsnag.notify(err)
@@ -80,13 +91,17 @@ export class StudentWorkView extends React.PureComponent<Props, State> {
 		this.setState(() => ({refreshing: false}))
 	}
 
-	onPressJob = (job: ThinJobType) => {
+	onPressJob = (job: FullJobType) => {
 		this.props.navigation.navigate('StudentWorkDetailView', {job})
 	}
 
-	keyExtractor = (item: ThinJobType, index: number) => index.toString()
+	keyExtractor = (item: FullJobType) => item.id
 
-	renderItem = ({item}: {item: ThinJobType}) => (
+	renderSectionHeader = ({section: {title}}: any) => (
+		<ListSectionHeader title={title} />
+	)
+
+	renderItem = ({item}: {item: FullJobType}) => (
 		<JobRow job={item} onPress={this.onPressJob} />
 	)
 
@@ -100,14 +115,15 @@ export class StudentWorkView extends React.PureComponent<Props, State> {
 		}
 
 		return (
-			<FlatList
+			<SectionList
 				ItemSeparatorComponent={ListSeparator}
 				ListEmptyComponent={<NoticeView text="There are no job postings." />}
-				data={this.state.jobs}
 				keyExtractor={this.keyExtractor}
 				onRefresh={this.refresh}
 				refreshing={this.state.refreshing}
 				renderItem={this.renderItem}
+				renderSectionHeader={this.renderSectionHeader}
+				sections={(this.state.jobs: any)}
 				style={styles.listContainer}
 			/>
 		)

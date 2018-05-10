@@ -16,7 +16,7 @@ import {
 	hasSeenAcknowledgement,
 	type LoginStateType,
 } from '../../flux/parts/settings'
-import {updateBalances} from '../../flux/parts/sis'
+import {updateBalances} from '../../flux/parts/balances'
 import {type ReduxState} from '../../flux'
 import delay from 'delay'
 import * as c from '../components/colors'
@@ -34,7 +34,7 @@ type ReduxStateProps = {
 	print: ?string,
 	weeklyMeals: ?string,
 	dailyMeals: ?string,
-	mealPlan: ?string,
+	guestSwipes: ?string,
 	loginState: LoginStateType,
 	message: ?string,
 	alertSeen: boolean,
@@ -61,13 +61,11 @@ class BalancesView extends React.PureComponent<Props, State> {
 		loading: false,
 	}
 
-	componentWillMount() {
+	componentDidMount() {
 		// calling "refresh" here, to make clear to the user
 		// that the data is being updated
 		this.refresh()
-	}
 
-	componentDidMount() {
 		if (!this.props.alertSeen) {
 			Alert.alert('', LONG_DISCLAIMER, [
 				{text: 'I Disagree', onPress: this.goBack, style: 'cancel'},
@@ -102,7 +100,7 @@ class BalancesView extends React.PureComponent<Props, State> {
 	}
 
 	render() {
-		let {dining, schillers, dailyMeals, weeklyMeals, mealPlan} = this.props
+		let {dining, schillers, dailyMeals, weeklyMeals, guestSwipes} = this.props
 		let {loading} = this.state
 
 		return (
@@ -134,29 +132,35 @@ class BalancesView extends React.PureComponent<Props, State> {
 						</View>
 					</Section>
 
-					<Section footer={DISCLAIMER} header="MEAL PLAN">
+					<Section footer={DISCLAIMER} header="MEAL PLAN (REMAINING)">
 						<View style={styles.balancesRow}>
 							<FormattedValueCell
 								formatter={getValueOrNa}
 								indeterminate={loading}
-								label="Daily Meals Left"
+								label="Daily Meals"
 								value={dailyMeals}
 							/>
 
 							<FormattedValueCell
 								formatter={getValueOrNa}
 								indeterminate={loading}
-								label="Weekly Meals Left"
-								style={styles.finalCell}
+								label="Weekly Meals"
 								value={weeklyMeals}
 							/>
+
+							<FormattedValueCell
+								formatter={getValueOrNa}
+								indeterminate={loading}
+								label="Guest Swipes"
+								style={styles.finalCell}
+								value={guestSwipes}
+							/>
 						</View>
-						{mealPlan && (
-							<Cell cellStyle="Subtitle" detail={mealPlan} title="Meal Plan" />
-						)}
 					</Section>
 
-					{this.props.loginState !== 'logged-in' || this.props.message ? (
+					{(this.props.loginState !== 'checking' &&
+						this.props.loginState !== 'logged-in') ||
+					this.props.message ? (
 						<Section footer="You'll need to log in again so we can update these numbers.">
 							{this.props.loginState !== 'logged-in' ? (
 								<Cell
@@ -180,13 +184,13 @@ class BalancesView extends React.PureComponent<Props, State> {
 
 function mapState(state: ReduxState): ReduxStateProps {
 	return {
-		schillers: state.sis ? state.sis.schillersBalance : null,
-		dining: state.sis ? state.sis.diningBalance : null,
-		print: state.sis ? state.sis.printBalance : null,
-		weeklyMeals: state.sis ? state.sis.mealsRemainingThisWeek : null,
-		dailyMeals: state.sis ? state.sis.mealsRemainingToday : null,
-		mealPlan: state.sis ? state.sis.mealPlanDescription : null,
-		message: state.sis ? state.sis.balancesErrorMessage : null,
+		schillers: state.balances ? state.balances.schillersBalance : null,
+		dining: state.balances ? state.balances.diningBalance : null,
+		print: state.balances ? state.balances.printBalance : null,
+		weeklyMeals: state.balances ? state.balances.mealsRemainingThisWeek : null,
+		dailyMeals: state.balances ? state.balances.mealsRemainingToday : null,
+		guestSwipes: state.balances ? state.balances.guestSwipesCount : null,
+		message: state.balances ? state.balances.balancesErrorMessage : null,
 		alertSeen: state.settings ? state.settings.unofficiallyAcknowledged : false,
 
 		loginState: state.settings ? state.settings.loginState : 'logged-out',
@@ -200,7 +204,9 @@ function mapDispatch(dispatch): ReduxDispatchProps {
 	}
 }
 
-export default connect(mapState, mapDispatch)(BalancesView)
+const ConnectedBalancesView = connect(mapState, mapDispatch)(BalancesView)
+
+export default ConnectedBalancesView
 
 let cellMargin = 10
 let cellSidePadding = 10
@@ -259,6 +265,13 @@ let styles = StyleSheet.create({
 	},
 })
 
+export function BigBalancesView(props: TopLevelViewPropsType) {
+	return <ConnectedBalancesView navigation={props.navigation} />
+}
+BigBalancesView.navigationOptions = {
+	title: 'Balances',
+}
+
 function getValueOrNa(value: ?string): string {
 	// eslint-disable-next-line no-eq-null
 	if (value == null) {
@@ -267,19 +280,14 @@ function getValueOrNa(value: ?string): string {
 	return value
 }
 
-function FormattedValueCell({
-	indeterminate,
-	label,
-	value,
-	style,
-	formatter,
-}: {
+function FormattedValueCell(props: {
 	indeterminate: boolean,
 	label: string,
 	value: ?string,
 	style?: any,
 	formatter: (?string) => string,
 }) {
+	let {indeterminate, label, value, style, formatter} = props
 	return (
 		<View style={[styles.rectangle, styles.common, styles.balances, style]}>
 			<Text

@@ -1,58 +1,56 @@
 // @flow
 
 import * as React from 'react'
-import {StyleSheet} from 'react-native'
+import {StyleSheet, Platform} from 'react-native'
 import * as c from '../components/colors'
-import {SearchBar} from '../components/searchbar'
-import sortBy from 'lodash/sortBy'
-import type {Building} from './types'
+import {SearchBar as SearchBarIOS} from '../components/searchbar'
+import {Searchbar as SearchBarAndroid} from 'react-native-paper'
+import type {Building, Feature} from './types'
 import {CategoryPicker} from './category-picker'
 import {BuildingList} from './building-list'
+import fuzzyfind from 'fuzzyfind'
 
 type Props = {
-	buildings: Array<Building>,
+	features: Array<Feature<Building>>,
 	onSelect: string => any,
 	overlaySize: 'min' | 'mid' | 'max',
 	onFocus: () => any,
 	onCancel: () => any,
+	onCategoryChange: string => any,
+	category: string,
 }
 
 type State = {
-	query: string,
-	category: string,
+	searchQuery: string,
 }
 
 export class BuildingPicker extends React.Component<Props, State> {
 	state = {
-		query: '',
-		category: 'Buildings',
+		searchQuery: '',
 	}
 
-	componentWillReceiveProps(nextProps: Props) {
+	componentDidUpdate(prevProps: Props) {
+		const lastSize = prevProps.overlaySize
 		const thisSize = this.props.overlaySize
-		const nextSize = nextProps.overlaySize
 
-		if (thisSize !== nextSize && thisSize === 'max') {
+		if (lastSize !== thisSize && lastSize === 'max') {
 			this.dismissKeyboard()
 		}
 	}
 
 	searchBar: any = null
 
-	dismissKeyboard = () => this.searchBar.unFocus()
-
-	onSearch = (text: ?string) => {
-		let query = text || ''
-		this.setState(() => ({query: query.toLowerCase()}))
+	dismissKeyboard = () => {
+		this.searchBar.blur()
 	}
 
 	performSearch = (text: string) => {
 		// Android clear button returns an object
 		if (typeof text !== 'string') {
-			return this.onSearch(null)
+			return this.handleSearchSubmit('')
 		}
 
-		return this.onSearch(text)
+		return this.handleSearchSubmit(text)
 	}
 
 	onSelectBuilding = (id: string) => this.props.onSelect(id)
@@ -74,7 +72,9 @@ export class BuildingPicker extends React.Component<Props, State> {
 		})
 	}
 
-	onCategoryChange = (category: string) => this.setState(() => ({category}))
+	handleSearchSubmit = (query: string) => {
+		this.setState(() => ({searchQuery: query}))
+	}
 
 	allCategories = ['Buildings', 'Outdoors', 'Parking', 'Athletics']
 	categoryLookup = {
@@ -85,39 +85,59 @@ export class BuildingPicker extends React.Component<Props, State> {
 	}
 
 	render() {
-		const search = (
-			<SearchBar
-				getRef={ref => (this.searchBar = ref)}
-				onCancel={this.onCancel}
-				onChangeText={this.performSearch}
-				onFocus={this.onFocus}
-				onSearchButtonPress={this.dismissKeyboard}
-				placeholder="Search for a place"
-				style={styles.searchBox}
-				textFieldBackgroundColor={c.iosGray}
-			/>
-		)
+		// I don't inject the search query into the Search box because
+		// it manages its text separately from RN, so you get jumpy editing.
+		// Unfortunately, you also lose your search query when it unmounts and remounts.
+		const search =
+			Platform.OS === 'android' ? (
+				<SearchBarAndroid
+					ref={ref => (this.searchBar = ref)}
+					onCancel={this.onCancel}
+					onChangeText={this.performSearch}
+					onFocus={this.onFocus}
+					onSearchButtonPress={this.dismissKeyboard}
+					placeholder="Search for a place"
+					style={styles.searchBox}
+					value={this.state.searchQuery}
+				/>
+			) : (
+				<SearchBarIOS
+					getRef={ref => (this.searchBar = ref)}
+					onCancel={this.onCancel}
+					onChangeText={this.performSearch}
+					onFocus={this.onFocus}
+					onSearchButtonPress={this.dismissKeyboard}
+					placeholder="Search for a place"
+					style={styles.searchBox}
+					textFieldBackgroundColor={c.iosGray}
+				/>
+			)
 
-		const picker = !this.state.query ? (
+		const picker = !this.state.searchQuery ? (
 			<CategoryPicker
 				categories={this.allCategories}
-				onChange={this.onCategoryChange}
-				selected={this.state.category}
+				onChange={this.props.onCategoryChange}
+				selected={this.props.category}
 			/>
 		) : null
 
-		let matches = this.state.query
-			? this.props.buildings.filter(b =>
-					b.name.toLowerCase().startsWith(this.state.query),
-				)
-			: this.props.buildings
+		let matches = this.props.features
 
-		if (!this.state.query) {
-			const selectedCategory = this.categoryLookup[this.state.category]
-			matches = matches.filter(b => b.categories[selectedCategory])
+		if (this.state.searchQuery) {
+			let query = this.state.searchQuery.toLowerCase()
+			matches = fuzzyfind(query, matches, {
+				accessor: b => {
+					let name = b.properties.name.toLowerCase()
+					let nickname = (b.properties.nickname || '').toLowerCase()
+					return `${name} ${nickname}`
+				},
+			})
+		} else {
+			const selectedCategory = this.categoryLookup[this.props.category]
+			matches = matches.filter(b =>
+				b.properties.categories.includes(selectedCategory),
+			)
 		}
-
-		matches = sortBy(matches, m => m.name)
 
 		return (
 			<React.Fragment>

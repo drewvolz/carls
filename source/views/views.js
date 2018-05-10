@@ -11,7 +11,8 @@ export type ViewType =
 			foreground: 'light' | 'dark',
 			tint: string,
 			gradient?: [string, string],
-		}
+			easterEgg?: boolean,
+	  }
 	| {
 			type: 'url',
 			view: string,
@@ -21,7 +22,8 @@ export type ViewType =
 			foreground: 'light' | 'dark',
 			tint: string,
 			gradient?: [string, string],
-		}
+			easterEgg?: boolean,
+	  }
 
 export const allViews: ViewType[] = [
 	{
@@ -36,11 +38,21 @@ export const allViews: ViewType[] = [
 	{
 		type: 'view',
 		view: 'SISView',
-		title: 'OneCard',
-		icon: 'credit-card',
+		title: 'The Hub',
+		icon: 'shop',
 		foreground: 'light',
 		tint: c.goldenrod,
 		gradient: c.yellowToGoldDark,
+	},
+	{
+		type: 'view',
+		view: 'BigBalancesView',
+		title: 'Balances',
+		icon: 'credit',
+		foreground: 'dark',
+		tint: c.goldenrod,
+		gradient: c.carlsMaizeToMaizeDark,
+		easterEgg: true,
 	},
 	{
 		type: 'view',
@@ -90,7 +102,7 @@ export const allViews: ViewType[] = [
 	},
 	{
 		type: 'view',
-		view: 'SumoTabView',
+		view: 'SumoUpcomingView',
 		title: 'SUMO',
 		icon: 'video',
 		foreground: 'light',
@@ -153,8 +165,7 @@ export const allViews: ViewType[] = [
 		gradient: c.pinkToHotpink,
 	},
 	{
-		type: 'url',
-		url: 'https://apps.carleton.edu/student/orgs/',
+		type: 'view',
 		view: 'StudentOrgsView',
 		title: 'Student Orgs',
 		icon: 'globe',

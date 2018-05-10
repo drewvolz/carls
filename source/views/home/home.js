@@ -1,7 +1,7 @@
 // @flow
 
 import * as React from 'react'
-import {ScrollView, StyleSheet, StatusBar} from 'react-native'
+import {ScrollView, View, StyleSheet, StatusBar} from 'react-native'
 
 import {connect} from 'react-redux'
 import * as c from '../components/colors'
@@ -15,6 +15,7 @@ import {partitionByIndex} from '../../lib/partition-by-index'
 import {HomeScreenButton, CELL_MARGIN} from './button'
 import {trackedOpenUrl} from '../components/open-url'
 import {EditHomeButton, OpenSettingsButton} from '../components/nav-buttons'
+import {UnofficialAppNotice} from './notice'
 
 type ReactProps = TopLevelViewPropsType & {
 	views: Array<ViewType>,
@@ -22,11 +23,18 @@ type ReactProps = TopLevelViewPropsType & {
 type ReduxStateProps = {
 	order: Array<string>,
 	inactiveViews: Array<string>,
+	easterEggEnabled: boolean,
 }
 
 type Props = ReactProps & ReduxStateProps
 
-function HomePage({navigation, order, inactiveViews, views = allViews}: Props) {
+function HomePage(props: Props) {
+	let {navigation, order, inactiveViews, views = allViews} = props
+
+	if (!props.easterEggEnabled) {
+		views = views.filter(v => !v.easterEgg)
+	}
+
 	const sortedViews = sortBy(views, view => order.indexOf(view.view))
 
 	const enabledViews = sortedViews.filter(
@@ -38,30 +46,33 @@ function HomePage({navigation, order, inactiveViews, views = allViews}: Props) {
 	return (
 		<ScrollView
 			alwaysBounceHorizontal={false}
-			contentContainerStyle={styles.cells}
 			overflow="hidden"
 			showsHorizontalScrollIndicator={false}
 			showsVerticalScrollIndicator={false}
 		>
-			<StatusBar backgroundColor={c.gold} barStyle="light-content" />
+			<StatusBar backgroundColor={c.carletonBlueAlt} barStyle="light-content" />
 
-			{columns.map((contents, i) => (
-				<Column key={i} style={styles.column}>
-					{contents.map(view => (
-						<HomeScreenButton
-							key={view.view}
-							onPress={() => {
-								if (view.type === 'url') {
-									return trackedOpenUrl({url: view.url, id: view.view})
-								} else {
-									return navigation.navigate(view.view)
-								}
-							}}
-							view={view}
-						/>
-					))}
-				</Column>
-			))}
+			<View style={styles.cells}>
+				{columns.map((contents, i) => (
+					<Column key={i} style={styles.column}>
+						{contents.map(view => (
+							<HomeScreenButton
+								key={view.view}
+								onPress={() => {
+									if (view.type === 'url') {
+										return trackedOpenUrl({url: view.url, id: view.view})
+									} else {
+										return navigation.navigate(view.view)
+									}
+								}}
+								view={view}
+							/>
+						))}
+					</Column>
+				))}
+			</View>
+
+			<UnofficialAppNotice />
 		</ScrollView>
 	)
 }
@@ -76,12 +87,13 @@ HomePage.navigationOptions = ({navigation}) => {
 
 function mapStateToProps(state: ReduxState): ReduxStateProps {
 	if (!state.homescreen) {
-		return {order: [], inactiveViews: []}
+		return {order: [], inactiveViews: [], easterEggEnabled: false}
 	}
 
 	return {
 		order: state.homescreen.order,
 		inactiveViews: state.homescreen.inactiveViews,
+		easterEggEnabled: state.settings ? state.settings.easterEggEnabled : false,
 	}
 }
 
